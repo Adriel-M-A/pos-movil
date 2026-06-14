@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "POS Kiosco",
+    "slug": "pos-movil",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "pos-movil",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#004D40",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.posmovil.kiosco"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": false,
+          "useSQLCipher": false,
+          "android": {
+            "enableCustomBuildFlags": false
+          },
+          "ios": {
+            "customBuildFlags": []
+          }
+        }
+      ],
+      "expo-sharing"
+    ]
+  }
+}
