@@ -86,10 +86,10 @@ export function Boton({
       case 'outline':
         botonStyles.push({
           backgroundColor: 'transparent',
-          borderWidth: 1,
-          borderColor: theme.colors.border,
+          borderWidth: 1.5,
+          borderColor: theme.colors.primary,
         });
-        textStyles.push({ color: theme.colors.text.primary });
+        textStyles.push({ color: theme.colors.primary });
         break;
       case 'ghost':
         botonStyles.push({

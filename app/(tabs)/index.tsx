@@ -21,18 +21,65 @@ import { MaterialIcons } from '@expo/vector-icons';
 
 // Utilidad para formatear la fecha ISO 8601 en formato amigable
 function formatearFechaApertura(isoString: string): string {
+  if (!isoString) return '';
   try {
-    const [fecha, hora] = isoString.split('T');
-    const [, mm, dd] = fecha.split('-');
-    const [hh, min] = hora.split(':');
-    const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-    const mesInt = parseInt(mm) - 1;
+    const normalizado = isoString.replace(' ', 'T');
+    const [fechaPart, horaPart] = normalizado.split('T');
+    
+    const separador = fechaPart.includes('-') ? '-' : '/';
+    const partesFecha = fechaPart.split(separador);
+    
+    let yyyy = partesFecha[0];
+    let mm = partesFecha[1];
+    let dd = partesFecha[2];
+    
+    if (yyyy.length === 2 && dd.length === 4) {
+      const temp = yyyy;
+      yyyy = dd;
+      dd = temp;
+    }
+    
+    const partesHora = horaPart.split(':');
+    const hh = partesHora[0];
+    const min = partesHora[1];
+    
+    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const mesInt = parseInt(mm, 10) - 1;
     const nombreMes = meses[mesInt] || mm;
-    return `${dd} ${nombreMes}, ${hh}:${min} hs`;
-  } catch {
+    
+    return `${parseInt(dd, 10)} de ${nombreMes}, ${hh}:${min} hs`;
+  } catch (err) {
+    console.error('Error al formatear fecha de apertura:', err);
     return isoString;
   }
 }
+
+const nombresMetodosCorta: Record<string, string> = {
+  efectivo: 'Efectivo',
+  transferencia: 'Transf.',
+  qr: 'QR',
+  credito: 'Tarjeta',
+};
+
+const obtenerIconoMetodoVenta = (metodo: string) => {
+  switch (metodo) {
+    case 'efectivo': return 'payments';
+    case 'transferencia': return 'account-balance';
+    case 'qr': return 'qr-code';
+    case 'credito': return 'credit-card';
+    default: return 'payment';
+  }
+};
+
+const obtenerColorMetodoVenta = (metodo: string) => {
+  switch (metodo) {
+    case 'efectivo': return theme.colors.efectivo;
+    case 'transferencia': return theme.colors.secondary;
+    case 'qr': return theme.colors.digital;
+    case 'credito': return '#673AB7';
+    default: return theme.colors.text.secondary;
+  }
+};
 
 export default function Inicio() {
   const router = useRouter();
@@ -197,15 +244,12 @@ export default function Inicio() {
   return (
     <SafeAreaView style={styles.contenedorPantalla}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
-      
-      {/* Header Caja Abierta sin ajustes redundantes */}
+          {/* Header Caja Abierta sin ajustes redundantes */}
       <View style={[styles.header, styles.headerBrandeado]}>
-        <View>
-          <Text style={styles.headerTituloBrandeado}>POS Kiosco</Text>
-          <Text style={styles.headerSubtituloBrandeado}>
-            Abierta: {formatearFechaApertura(cajaActiva.fechaApertura)}
-          </Text>
-        </View>
+        <Text style={styles.headerTituloBrandeado}>POS Kiosco</Text>
+        <Text style={styles.headerSubtituloBrandeado}>
+          Abierta: {formatearFechaApertura(cajaActiva.fechaApertura)}
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.contenidoDashboard} showsVerticalScrollIndicator={false}>
@@ -216,67 +260,84 @@ export default function Inicio() {
           <View style={styles.filaContadores}>
             <Tarjeta tinted={false} style={[styles.tarjetaContador, { marginRight: theme.spacing.sm }]}>
               <Text style={styles.contadorLabel}>Efectivo en Caja</Text>
-              <Text style={[styles.contadorValor, { color: theme.colors.efectivo }]}>
+              <Text style={styles.contadorValor}>
                 ${efectivoEnCaja.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </Text>
-              <Text style={styles.contadorInfo}>Fondo + Cobros</Text>
             </Tarjeta>
 
             <Tarjeta tinted={false} style={styles.tarjetaContador}>
               <Text style={styles.contadorLabel}>Total Facturado</Text>
-              <Text style={[styles.contadorValor, { color: theme.colors.primary }]}>
+              <Text style={styles.contadorValor}>
                 ${totalGeneralVentas.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </Text>
-              <Text style={styles.contadorInfo}>Total de la jornada</Text>
             </Tarjeta>
           </View>
 
-          <Text style={styles.tituloDesglose}>Cobros por Canal</Text>
-          <View style={styles.filaDesgloseDigital}>
-            <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: 8 }]}>
-              <View style={styles.contenedorTituloDesglose}>
-                <MaterialIcons name="qr-code" size={12} color={theme.colors.text.secondary} style={{ marginRight: 4 }} />
-                <Text style={styles.desgloseLabel}>QR</Text>
-              </View>
-              <Text style={[styles.desgloseValor, { color: theme.colors.digital }]}>
-                ${totalQrVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-              </Text>
-            </Tarjeta>
-            <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: 8 }]}>
-              <View style={styles.contenedorTituloDesglose}>
-                <MaterialIcons name="account-balance" size={12} color={theme.colors.text.secondary} style={{ marginRight: 4 }} />
-                <Text style={styles.desgloseLabel}>Transf.</Text>
-              </View>
-              <Text style={[styles.desgloseValor, { color: theme.colors.secondary }]}>
-                ${totalTransferenciaVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-              </Text>
-            </Tarjeta>
-            <Tarjeta tinted style={styles.tarjetaDesglose}>
-              <View style={styles.contenedorTituloDesglose}>
-                <MaterialIcons name="credit-card" size={12} color={theme.colors.text.secondary} style={{ marginRight: 4 }} />
-                <Text style={styles.desgloseLabel}>Tarjetas</Text>
-              </View>
-              <Text style={[styles.desgloseValor, { color: '#8E24AA' }]}>
-                ${totalCreditoVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-              </Text>
-            </Tarjeta>
+          <Text style={styles.tituloDesglose}>Cobros por método de pago</Text>
+          <View style={styles.contenedorGrillaMetodos}>
+            <View style={styles.filaGrillaMetodos}>
+              {/* Efectivo */}
+              <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: theme.spacing.sm }]}>
+                <View style={styles.contenedorTituloDesglose}>
+                  <MaterialIcons name="payments" size={14} color={theme.colors.efectivo} style={{ marginRight: 4 }} />
+                  <Text style={styles.desgloseLabel}>Efectivo</Text>
+                </View>
+                <Text style={styles.desgloseValor}>
+                  ${totalEfectivoVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                </Text>
+              </Tarjeta>
+
+              {/* Transferencia */}
+              <Tarjeta tinted style={styles.tarjetaDesglose}>
+                <View style={styles.contenedorTituloDesglose}>
+                  <MaterialIcons name="account-balance" size={14} color={theme.colors.digital} style={{ marginRight: 4 }} />
+                  <Text style={styles.desgloseLabel}>Transf.</Text>
+                </View>
+                <Text style={styles.desgloseValor}>
+                  ${totalTransferenciaVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                </Text>
+              </Tarjeta>
+            </View>
+
+            <View style={[styles.filaGrillaMetodos, { marginTop: theme.spacing.sm }]}>
+              {/* QR */}
+              <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: theme.spacing.sm }]}>
+                <View style={styles.contenedorTituloDesglose}>
+                  <MaterialIcons name="qr-code" size={14} color={theme.colors.digital} style={{ marginRight: 4 }} />
+                  <Text style={styles.desgloseLabel}>QR</Text>
+                </View>
+                <Text style={styles.desgloseValor}>
+                  ${totalQrVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                </Text>
+              </Tarjeta>
+
+              {/* Crédito */}
+              <Tarjeta tinted style={styles.tarjetaDesglose}>
+                <View style={styles.contenedorTituloDesglose}>
+                  <MaterialIcons name="credit-card" size={14} color="#673AB7" style={{ marginRight: 4 }} />
+                  <Text style={styles.desgloseLabel}>Tarjetas</Text>
+                </View>
+                <Text style={styles.desgloseValor}>
+                  ${totalCreditoVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                </Text>
+              </Tarjeta>
+            </View>
           </View>
 
         </View>
 
-        {/* Acciones Principales: Únicamente Arqueo/Cierre */}
-        <View style={styles.seccionAcciones}>
-          <Boton
-            titulo="Arqueo / Cierre de Caja"
-            variant="outline"
-            alto="large"
-            onPress={() => router.push('/cierre')}
-          />
-        </View>
+
 
         {/* Historial de Ventas */}
         <View style={styles.seccionHistorial}>
-          <Text style={styles.tituloSeccion}>Ventas de la Jornada</Text>
+          <View style={styles.contenedorTituloSeccionConBadge}>
+            <Text style={styles.tituloSeccion}>Ventas de la Jornada</Text>
+            <View style={styles.badgeVentas}>
+              <Text style={styles.badgeVentasTexto}>
+                {ventas.length} {ventas.length === 1 ? 'Operación' : 'Operaciones'}
+              </Text>
+            </View>
+          </View>
           
           {ventas.length === 0 ? (
             <Tarjeta tinted style={styles.tarjetaHistorialVacio}>
@@ -286,31 +347,60 @@ export default function Inicio() {
               </Text>
             </Tarjeta>
           ) : (
-            ventas.slice().reverse().map((venta) => (
-              <Tarjeta key={venta.id} tinted style={styles.tarjetaVentaItem}>
-                <View style={styles.filaVentaItem}>
-                  <View>
-                    <Text style={styles.ventaItemHora}>
-                      {venta.timestamp.split('T')[1]?.slice(0, 5) || '00:00'} hs
-                    </Text>
-                    <Text style={styles.ventaItemMetodo}>
-                      {venta.pagos.map(p => p.metodo.toUpperCase()).join(' + ')}
-                    </Text>
+            ventas.slice().reverse().map((venta) => {
+              const primerPago = venta.pagos[0];
+              const metodoPrimerPago = primerPago ? primerPago.metodo : 'efectivo';
+              const metodosLista = venta.pagos.map(p => nombresMetodosCorta[p.metodo] || p.metodo).join(' / ');
+              
+              return (
+                <Tarjeta key={venta.id} tinted style={styles.tarjetaVentaItem}>
+                  <View style={styles.filaVentaItem}>
+                    {/* Columna 1: Hora */}
+                    <View style={styles.colVentaHora}>
+                      <Text style={styles.ventaItemHora}>
+                        {venta.timestamp.split('T')[1]?.slice(0, 5) || '00:00'}
+                      </Text>
+                    </View>
+                    
+                    {/* Columna 2: Icono */}
+                    <View style={styles.colVentaIcono}>
+                      <View style={styles.contenedorIconoMetodo}>
+                        <MaterialIcons 
+                          name={obtenerIconoMetodoVenta(metodoPrimerPago)} 
+                          size={20} 
+                          color={obtenerColorMetodoVenta(metodoPrimerPago)} 
+                        />
+                      </View>
+                    </View>
+                    
+                    {/* Columna 3: Monto y Medios de Pago */}
+                    <View style={styles.colVentaDetalles}>
+                      <Text style={styles.ventaItemMontoTabla}>
+                        ${venta.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+                      </Text>
+                      <Text 
+                        style={styles.ventaItemMetodosTabla}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {metodosLista}
+                      </Text>
+                    </View>
+                    
+                    {/* Columna 4: Botón de Borrar (Icono X tenue) */}
+                    <View style={styles.colVentaAccion}>
+                      <TouchableOpacity
+                        style={styles.botonBorrarIcono}
+                        onPress={() => setVentaABorrar(venta.id)}
+                        activeOpacity={0.6}
+                      >
+                        <MaterialIcons name="close" size={20} color={theme.colors.text.muted} />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  <Text style={styles.ventaItemMonto}>
-                    ${venta.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                  </Text>
-                  
-                  {/* Botón Borrar */}
-                  <TouchableOpacity
-                    style={styles.botonBorrarVenta}
-                    onPress={() => setVentaABorrar(venta.id)}
-                  >
-                    <Text style={styles.textoBotonBorrarVenta}>Borrar</Text>
-                  </TouchableOpacity>
-                </View>
-              </Tarjeta>
-            ))
+                </Tarjeta>
+              );
+            })
           )}
         </View>
 
@@ -429,7 +519,7 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   gridContadores: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.xl,
   },
   filaContadores: {
     flexDirection: 'row',
@@ -439,7 +529,7 @@ const styles = StyleSheet.create({
   tarjetaContador: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: theme.spacing.md,
+    paddingVertical: theme.spacing.xl,
   },
   contadorLabel: {
     fontFamily: theme.fonts.bold,
@@ -451,13 +541,8 @@ const styles = StyleSheet.create({
   },
   contadorValor: {
     fontFamily: theme.fonts.monoBold,
-    fontSize: theme.sizes.xl,
-  },
-  contadorInfo: {
-    fontFamily: theme.fonts.regular,
-    fontSize: 10,
-    color: theme.colors.text.secondary,
-    marginTop: 2,
+    fontSize: theme.sizes.xxl,
+    color: theme.colors.text.primary,
   },
   tituloDesglose: {
     fontFamily: theme.fonts.bold,
@@ -465,16 +550,20 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: theme.spacing.xs,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
-  filaDesgloseDigital: {
+  contenedorGrillaMetodos: {
+    flexDirection: 'column',
+  },
+  filaGrillaMetodos: {
     flexDirection: 'row',
     justifyContent: 'space-between',
   },
   tarjetaDesglose: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.md,
   },
   contenedorTituloDesglose: {
     flexDirection: 'row',
@@ -483,18 +572,25 @@ const styles = StyleSheet.create({
   },
   desgloseLabel: {
     fontFamily: theme.fonts.bold,
-    fontSize: 9,
+    fontSize: 10,
     color: theme.colors.text.secondary,
   },
   desgloseValor: {
     fontFamily: theme.fonts.monoBold,
-    fontSize: theme.sizes.sm,
+    fontSize: theme.sizes.md,
+    color: theme.colors.text.primary,
   },
   seccionAcciones: {
     marginBottom: theme.spacing.lg,
   },
   seccionHistorial: {
-    marginTop: theme.spacing.xs,
+    marginTop: theme.spacing.xxl,
+  },
+  contenedorTituloSeccionConBadge: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
   },
   tituloSeccion: {
     fontFamily: theme.fonts.bold,
@@ -502,7 +598,17 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: theme.spacing.md,
+  },
+  badgeVentas: {
+    backgroundColor: theme.colors.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: theme.borderRadius.round,
+  },
+  badgeVentasTexto: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 10,
+    color: theme.colors.text.light,
   },
   tarjetaHistorialVacio: {
     paddingVertical: theme.spacing.xl,
@@ -528,37 +634,58 @@ const styles = StyleSheet.create({
   },
   filaVentaItem: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  colVentaHora: {
+    width: 60,
+    justifyContent: 'center',
+  },
+  colVentaIcono: {
+    width: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contenedorIconoMetodo: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#F0F3F3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  colVentaDetalles: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.sm,
+    justifyContent: 'center',
+  },
+  colVentaAccion: {
+    width: 36,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   ventaItemHora: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: theme.sizes.sm,
+    color: theme.colors.text.secondary,
+  },
+  ventaItemMontoTabla: {
     fontFamily: theme.fonts.monoBold,
     fontSize: theme.sizes.md,
     color: theme.colors.text.primary,
   },
-  ventaItemMetodo: {
+  ventaItemMetodosTabla: {
     fontFamily: theme.fonts.medium,
-    fontSize: theme.sizes.xs,
+    fontSize: 11,
     color: theme.colors.text.secondary,
+    marginTop: 2,
   },
-  ventaItemMonto: {
-    fontFamily: theme.fonts.monoBold,
-    fontSize: theme.sizes.md,
-    color: theme.colors.primary,
-    flex: 1,
-    textAlign: 'right',
-    paddingRight: theme.spacing.sm,
-  },
-  botonBorrarVenta: {
-    backgroundColor: theme.colors.danger,
-    paddingVertical: theme.spacing.xs,
-    paddingHorizontal: theme.spacing.md,
-    borderRadius: theme.borderRadius.sm,
+  botonBorrarIcono: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
-  },
-  textoBotonBorrarVenta: {
-    fontFamily: theme.fonts.bold,
-    fontSize: theme.sizes.xs,
-    color: theme.colors.text.light,
+    backgroundColor: 'transparent',
   },
 });
