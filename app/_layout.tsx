@@ -36,7 +36,6 @@ export default function RootLayout() {
     <CajaProvider>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="cierre" />
       </Stack>
     </CajaProvider>
   );

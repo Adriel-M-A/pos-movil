@@ -83,62 +83,11 @@ const obtenerColorMetodoVenta = (metodo: string) => {
 
 export default function Inicio() {
   const router = useRouter();
-  const { cajaActiva, ventas, cargando, iniciarNuevaCaja, eliminarVentaActiva } = useCaja();
+  const { cajaActiva, ventas, cargando, eliminarVentaActiva } = useCaja();
   
-  // Estado para el fondo de apertura
-  const [montoApertura, setMontoApertura] = useState<string>('');
-  const [abriendoCaja, setAbriendoCaja] = useState<boolean>(false);
-
   // Estado para borrado seguro de ventas
   const [ventaABorrar, setVentaABorrar] = useState<number | null>(null);
   const [borrando, setBorrando] = useState<boolean>(false);
-
-  // Cada vez que la caja pasa a estar cerrada (cajaActiva === null), recargamos el fondo por defecto
-  useEffect(() => {
-    if (!cajaActiva) {
-      async function cargarDefault() {
-        try {
-          const val = await obtenerConfiguracion('fondo_inicial_default');
-          if (val) {
-            setMontoApertura(val.replace('.', ','));
-          } else {
-            setMontoApertura('10000'); // Valor por defecto
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      cargarDefault();
-    }
-  }, [cajaActiva]);
-
-  // Manejar teclado numérico para apertura
-  const handleTeclaApertura = (tecla: TipoTecla) => {
-    setMontoApertura((prev) => procesarEntradaTeclado(prev, tecla));
-  };
-
-  const handleLimpiarApertura = () => {
-    setMontoApertura('');
-  };
-
-  // Enviar apertura de caja
-  const handleAbrirCaja = async () => {
-    const valorGuardar = montoApertura.replace(',', '.');
-    const valorNumerico = parseFloat(valorGuardar);
-
-    if (isNaN(valorNumerico) || valorNumerico < 0) {
-      return;
-    }
-
-    setAbriendoCaja(true);
-    try {
-      await iniciarNuevaCaja(valorNumerico);
-    } catch (err) {
-      console.error('Error al abrir la caja:', err);
-    } finally {
-      setAbriendoCaja(false);
-    }
-  };
 
   const confirmarBorrado = async () => {
     if (ventaABorrar === null) return;
@@ -163,49 +112,23 @@ export default function Inicio() {
     );
   }
 
-  // --- VISTA 1: APERTURA DE CAJA ---
+  // --- VISTA 1: CAJA CERRADA ---
   if (!cajaActiva) {
     return (
-      <SafeAreaView style={styles.contenedorPantalla}>
+      <SafeAreaView style={styles.contenedorCentrado}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        
-        {/* Cabecera sin ajustes redundantes */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitulo}>POS Kiosco</Text>
-        </View>
-
-        <ScrollView contentContainerStyle={styles.contenidoApertura} showsVerticalScrollIndicator={false}>
-          <Tarjeta tinted={false} style={styles.seccionTarjeta}>
-            <Text style={styles.tituloApertura}>Iniciar Jornada</Text>
-            <Text style={styles.etiquetaCampo}>Monto inicial en caja</Text>
-            
-            <View style={styles.contenedorMontoInput}>
-              <Text style={styles.simboloMoneda}>$</Text>
-              <Text style={styles.montoTexto} numberOfLines={1}>
-                {montoApertura || '0'}
-              </Text>
-            </View>
-
-            <Text style={styles.ayudaTexto}>
-              Ingresá el efectivo físico disponible en la caja registradora para el vuelto.
-            </Text>
-          </Tarjeta>
-
-          {/* Teclado en pantalla */}
-          <TecladoNumerico
-            onPresionarTecla={handleTeclaApertura}
-            onLimpiarTodo={handleLimpiarApertura}
-            style={styles.teclado}
-          />
-
-          <Boton
-            titulo={`Iniciar Caja con $${parseFloat(montoApertura.replace(',', '.')) || 0}`}
-            variant="secondary"
-            alto="large"
-            loading={abriendoCaja}
-            onPress={handleAbrirCaja}
-          />
-        </ScrollView>
+        <MaterialIcons name="lock" size={60} color={theme.colors.text.secondary} style={styles.iconoBloqueado} />
+        <Text style={styles.tituloBloqueado}>Caja Cerrada</Text>
+        <Text style={styles.mensajeBloqueado}>
+          Para comenzar a registrar cobros y visualizar el dashboard de la jornada, debés abrir la caja.
+        </Text>
+        <Boton
+          titulo="Ir a Abrir Caja"
+          variant="primary"
+          alto="large"
+          onPress={() => router.push('/caja')}
+          style={styles.botonRedireccion}
+        />
       </SafeAreaView>
     );
   }
@@ -687,5 +610,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'transparent',
+  },
+  contenedorCentrado: {
+    flex: 1,
+    backgroundColor: '#ECEFF1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: theme.spacing.xl,
+  },
+  iconoBloqueado: {
+    marginBottom: theme.spacing.md,
+  },
+  tituloBloqueado: {
+    fontFamily: theme.fonts.bold,
+    fontSize: theme.sizes.lg,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
+  },
+  mensajeBloqueado: {
+    fontFamily: theme.fonts.regular,
+    fontSize: theme.sizes.sm,
+    color: theme.colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: theme.spacing.lg,
+  },
+  botonRedireccion: {
+    width: '100%',
+    maxWidth: 240,
   },
 });

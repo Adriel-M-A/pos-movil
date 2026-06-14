@@ -11,7 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCaja } from '@/context/CajaContext';
 import { theme } from '@/theme';
 import { Boton } from '@/components/Boton';
-import { TecladoNumerico, TipoTecla, procesarEntradaTeclado } from '@/components/TecladoNumerico';
+import { TipoTecla, procesarEntradaTeclado } from '@/components/TecladoNumerico';
+import { TecladoAccion } from '@/components/TecladoAccion';
 import { ChipMetodoPago } from '@/components/ChipMetodoPago';
 import { MaterialIcons } from '@expo/vector-icons';
 
@@ -152,19 +153,16 @@ export default function Venta() {
 
       {/* Footer Fijo con Teclado y Botón Cobrar */}
       <View style={styles.footer}>
-        <TecladoNumerico
+        <TecladoAccion
           onPresionarTecla={handleTecla}
           onLimpiarTodo={handleLimpiarTodo}
           comaActiva={comaActiva}
-          style={styles.teclado}
-        />
-        <Boton
-          titulo={guardando ? 'Guardando...' : 'Confirmar Venta'}
-          variant="primary"
-          alto="large"
-          loading={guardando}
-          disabled={totalCalculado <= 0}
-          onPress={handleCobrar}
+          tituloBoton={guardando ? 'Guardando...' : 'Confirmar Venta'}
+          variantBoton="primary"
+          loadingBoton={guardando}
+          disabledBoton={totalCalculado <= 0}
+          onPressBoton={handleCobrar}
+          styleTeclado={styles.teclado}
         />
       </View>
     </SafeAreaView>
