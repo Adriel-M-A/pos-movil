@@ -1,4 +1,4 @@
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, like } from 'drizzle-orm';
 import { db } from './client';
 import { cajas, ventas, ventaPagos, configuraciones } from './schema';
 
@@ -282,3 +282,80 @@ export async function exportarA_CSV(): Promise<string> {
 
   return csv;
 }
+
+/**
+ * Obtiene todas las ventas y la distribución de métodos de pago para un mes específico (YYYY-MM).
+ */
+export async function obtenerDatosMensuales(anioMes: string) {
+  const ventasMes = await db
+    .select()
+    .from(ventas)
+    .where(like(ventas.timestamp, `${anioMes}-%`))
+    .orderBy(ventas.timestamp);
+
+  const pagosMes = await db
+    .select({
+      metodo: ventaPagos.metodo,
+      monto: ventaPagos.monto,
+    })
+    .from(ventaPagos)
+    .innerJoin(ventas, eq(ventaPagos.ventaId, ventas.id))
+    .where(like(ventas.timestamp, `${anioMes}-%`));
+
+  const pagosPorMetodo = {
+    efectivo: 0,
+    transferencia: 0,
+    qr: 0,
+    credito: 0,
+  };
+
+  pagosMes.forEach((p) => {
+    if (p.metodo in pagosPorMetodo) {
+      pagosPorMetodo[p.metodo as keyof typeof pagosPorMetodo] += p.monto;
+    }
+  });
+
+  const totalVendido = ventasMes.reduce((sum, v) => sum + v.monto, 0);
+
+  return {
+    ventas: ventasMes,
+    pagosPorMetodo,
+    totalVendido,
+  };
+}
+
+/**
+ * Obtiene la sumatoria mensual de ventas para los últimos N meses finalizando en el mes dado.
+ */
+export async function obtenerTendenciaMensual(anioMesFin: string, mesesAtras: number = 6) {
+  const result = [];
+  const [anioStr, mesStr] = anioMesFin.split('-');
+  let anio = parseInt(anioStr);
+  let mes = parseInt(mesStr);
+
+  const mesesList: string[] = [];
+  for (let i = 0; i < mesesAtras; i++) {
+    const mStr = String(mes).padStart(2, '0');
+    mesesList.unshift(`${anio}-${mStr}`);
+    mes = mes - 1;
+    if (mes === 0) {
+      mes = 12;
+      anio = anio - 1;
+    }
+  }
+
+  for (const m of mesesList) {
+    const ventasMes = await db
+      .select({ monto: ventas.monto })
+      .from(ventas)
+      .where(like(ventas.timestamp, `${m}-%`));
+    const total = ventasMes.reduce((sum, v) => sum + v.monto, 0);
+    result.push({
+      mes: m,
+      total,
+    });
+  }
+
+  return result;
+}
+

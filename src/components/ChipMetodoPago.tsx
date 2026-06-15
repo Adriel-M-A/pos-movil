@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import {
   TouchableOpacity,
   Text,
@@ -24,7 +24,7 @@ interface ChipMetodoPagoProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export function ChipMetodoPago({
+export const ChipMetodoPago = memo(function ChipMetodoPago({
   metodo,
   seleccionado,
   onPress,
@@ -105,7 +105,7 @@ export function ChipMetodoPago({
       )}
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   base: {

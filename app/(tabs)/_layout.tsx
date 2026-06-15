@@ -1,4 +1,3 @@
-import React from 'react';
 import { Tabs } from 'expo-router';
 import { StyleSheet, View, TouchableOpacity } from 'react-native';
 import { theme } from '@/theme';

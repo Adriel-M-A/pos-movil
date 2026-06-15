@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,61 +13,76 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '@/theme';
 import { Tarjeta } from '@/components/Tarjeta';
-import { Boton } from '@/components/Boton';
 import { BarChart, PieChart } from 'react-native-gifted-charts';
-import { obtenerResumenHistorico, obtenerResumenPorMetodo } from '@/db/repositorio';
+import { obtenerDatosMensuales, obtenerTendenciaMensual } from '@/db/repositorio';
 import { MaterialIcons } from '@expo/vector-icons';
 
-interface CajaResumen {
+interface VentaItem {
+  id: number;
   cajaId: number;
-  fechaApertura: string;
+  monto: number;
+  timestamp: string;
+  nota: string | null;
+}
+
+interface DatosMensualesType {
+  ventas: VentaItem[];
+  pagosPorMetodo: {
+    efectivo: number;
+    transferencia: number;
+    qr: number;
+    credito: number;
+  };
   totalVendido: number;
 }
-
-interface MetodosResumen {
-  efectivo: number;
-  transferencia: number;
-  qr: number;
-  credito: number;
-}
-
-type Periodo = 'dia' | 'semana' | 'mes';
 
 const obtenerIconoMetodo = (text: string) => {
   switch (text.toLowerCase()) {
     case 'efectivo':
       return 'payments';
     case 'transf.':
+    case 'transferencia':
       return 'account-balance';
     case 'qr':
       return 'qr-code';
     case 'crédito':
+    case 'credito':
       return 'credit-card';
     default:
       return 'payment';
   }
 };
 
+const nombresMeses = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const mesesAbreviados = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
 export default function Reportes() {
-  const [periodo, setPeriodo] = useState<Periodo>('semana');
-  const [cargando, setCargando] = useState<boolean>(true);
-  const [resumenHistorico, setResumenHistorico] = useState<CajaResumen[]>([]);
-  const [resumenMetodos, setResumenMetodos] = useState<MetodosResumen>({
-    efectivo: 0,
-    transferencia: 0,
-    qr: 0,
-    credito: 0,
+  const [anioMes, setAnioMes] = useState<string>(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   });
+  
+  const [cargando, setCargando] = useState<boolean>(true);
+  const [datosMensuales, setDatosMensuales] = useState<DatosMensualesType>({
+    ventas: [],
+    pagosPorMetodo: { efectivo: 0, transferencia: 0, qr: 0, credito: 0 },
+    totalVendido: 0,
+  });
+  
+  const [tendenciaMensual, setTendenciaMensual] = useState<Array<{ mes: string; total: number }>>([]);
 
   useEffect(() => {
     async function cargarDatos() {
       setCargando(true);
       try {
-        const limite = periodo === 'dia' ? 3 : periodo === 'semana' ? 7 : 15;
-        const hist = await obtenerResumenHistorico(limite);
-        const met = await obtenerResumenPorMetodo(limite);
-        setResumenHistorico(hist);
-        setResumenMetodos(met);
+        const dMes = await obtenerDatosMensuales(anioMes);
+        const tMes = await obtenerTendenciaMensual(anioMes, 6);
+        setDatosMensuales(dMes);
+        setTendenciaMensual(tMes);
       } catch (err) {
         console.error('Error al cargar datos del reporte:', err);
         Alert.alert('Error', 'No se pudieron cargar las estadísticas.');
@@ -76,77 +91,113 @@ export default function Reportes() {
       }
     }
     cargarDatos();
-  }, [periodo]);
+  }, [anioMes]);
 
-  // Ajustar ancho de barras según la cantidad para que se dibuje estéticamente
-  const configuracionBarras = () => {
-    switch (periodo) {
-      case 'dia':
-        return { barWidth: 44, spacing: 36 };
-      case 'semana':
-        return { barWidth: 28, spacing: 20 };
-      case 'mes':
-        return { barWidth: 14, spacing: 10 };
+  const cambiarMes = (direccion: 'anterior' | 'siguiente') => {
+    const [anioStr, mesStr] = anioMes.split('-');
+    let anio = parseInt(anioStr);
+    let mes = parseInt(mesStr);
+    
+    if (direccion === 'anterior') {
+      mes = mes - 1;
+      if (mes === 0) {
+        mes = 12;
+        anio = anio - 1;
+      }
+    } else {
+      mes = mes + 1;
+      if (mes === 13) {
+        mes = 1;
+        anio = anio + 1;
+      }
     }
+    setAnioMes(`${anio}-${String(mes).padStart(2, '0')}`);
   };
 
-  const { barWidth, spacing } = configuracionBarras();
+  const formatearTituloMes = (am: string) => {
+    const [anioStr, mesStr] = am.split('-');
+    const idx = parseInt(mesStr) - 1;
+    return `${nombresMeses[idx]} ${anioStr}`;
+  };
 
-  // 1. Datos para el gráfico de barras (historial de cajas)
-  const barData = resumenHistorico.map((item) => {
-    let label = `Caja ${item.cajaId}`;
-    try {
-      const [fecha] = item.fechaApertura.split('T');
-      const [, mm, dd] = fecha.split('-');
-      const meses = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const mesInt = parseInt(mm) - 1;
-      label = `${dd} ${meses[mesInt] || mm}`;
-    } catch {
-      // Fallback
-    }
+  // 1. Cálculos de métricas destacadas
+  const totalFacturado = datosMensuales.totalVendido;
+  const operacionesCount = datosMensuales.ventas.length;
+  const ticketPromedio = operacionesCount > 0 ? Math.round(totalFacturado / operacionesCount) : 0;
+
+  // 2. Datos para gráfico de tendencia (Mini bar chart) - Sin topLabelComponent para visuales limpios en móviles
+  const barDataTendencia = tendenciaMensual.map((item) => {
+    const [_, mesStr] = item.mes.split('-');
+    const mesIdx = parseInt(mesStr) - 1;
+    const label = mesesAbreviados[mesIdx] || item.mes;
+    const esMesActivo = item.mes === anioMes;
 
     return {
-      value: item.totalVendido,
-      label: label,
-      frontColor: theme.colors.primary,
-      topLabelComponent: () => (
-        <Text style={styles.etiquetaBarra}>
-          ${Math.round(item.totalVendido)}
-        </Text>
-      ),
+      value: item.total,
+      label,
+      frontColor: esMesActivo ? theme.colors.secondary : '#B0BEC5',
     };
   });
 
-  // 2. Datos para el gráfico de torta (métodos de pago)
-  const totalMetodos =
-    resumenMetodos.efectivo +
-    resumenMetodos.transferencia +
-    resumenMetodos.qr +
-    resumenMetodos.credito;
-
+  // 3. Datos para el gráfico de torta (métodos de pago)
   const pieData = [
     {
-      value: resumenMetodos.efectivo,
+      value: datosMensuales.pagosPorMetodo.efectivo,
       color: theme.colors.efectivo,
       text: 'Efectivo',
-      focused: true,
     },
     {
-      value: resumenMetodos.transferencia,
+      value: datosMensuales.pagosPorMetodo.transferencia,
       color: theme.colors.secondary,
       text: 'Transf.',
     },
     {
-      value: resumenMetodos.qr,
+      value: datosMensuales.pagosPorMetodo.qr,
       color: theme.colors.digital,
       text: 'QR',
     },
     {
-      value: resumenMetodos.credito,
+      value: datosMensuales.pagosPorMetodo.credito,
       color: '#8E24AA',
       text: 'Crédito',
     },
   ].filter((p) => p.value > 0);
+
+  // 4. Datos para gráfico diario - Sin topLabelComponent
+  const [anioStr, mesStr] = anioMes.split('-');
+  const anio = parseInt(anioStr);
+  const mes = parseInt(mesStr);
+  const diasEnMes = new Date(anio, mes, 0).getDate();
+
+  const datosDiarios = Array.from({ length: diasEnMes }, (_, i) => ({
+    day: i + 1,
+    total: 0,
+  }));
+
+  datosMensuales.ventas.forEach((v) => {
+    try {
+      const dStr = v.timestamp.split('T')[0].split('-')[2];
+      const d = parseInt(dStr);
+      if (d >= 1 && d <= diasEnMes) {
+        datosDiarios[d - 1].total += v.monto;
+      }
+    } catch (e) {
+      // ignore
+    }
+  });
+
+  const barDataDiario = datosDiarios.map((d) => {
+    const hoy = new Date();
+    const esHoy = d.day === hoy.getDate() && 
+                 mes === (hoy.getMonth() + 1) && 
+                 anio === hoy.getFullYear();
+
+    return {
+      value: d.total,
+      label: String(d.day),
+      frontColor: esHoy ? theme.colors.secondary : theme.colors.primary,
+    };
+  });
 
   const screenWidth = Dimensions.get('window').width - 32;
 
@@ -154,97 +205,57 @@ export default function Reportes() {
     <SafeAreaView style={styles.contenedor}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
-      {/* Cabecera minimalista sin botón volver */}
+      {/* Cabecera / Selector de Mes estilo Mercado Pago */}
       <View style={styles.header}>
-        <Text style={styles.tituloHeader}>Reportes y Métricas</Text>
+        <TouchableOpacity style={styles.botonHeader} onPress={() => cambiarMes('anterior')}>
+          <MaterialIcons name="chevron-left" size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
+        <Text style={styles.tituloHeader}>{formatearTituloMes(anioMes)}</Text>
+        <TouchableOpacity style={styles.botonHeader} onPress={() => cambiarMes('siguiente')}>
+          <MaterialIcons name="chevron-right" size={28} color={theme.colors.primary} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.contenido} showsVerticalScrollIndicator={false}>
         
-        {/* Selector de Período segmentado */}
-        <View style={styles.contenedorPeriodos}>
-          <TouchableOpacity
-            style={[styles.botonPeriodo, periodo === 'dia' && styles.botonPeriodoActivo]}
-            onPress={() => setPeriodo('dia')}
-          >
-            <Text style={[styles.textoPeriodo, periodo === 'dia' && styles.textoPeriodoActivo]}>Diario</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.botonPeriodo, periodo === 'semana' && styles.botonPeriodoActivo]}
-            onPress={() => setPeriodo('semana')}
-          >
-            <Text style={[styles.textoPeriodo, periodo === 'semana' && styles.textoPeriodoActivo]}>Semanal</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.botonPeriodo, periodo === 'mes' && styles.botonPeriodoActivo]}
-            onPress={() => setPeriodo('mes')}
-          >
-            <Text style={[styles.textoPeriodo, periodo === 'mes' && styles.textoPeriodoActivo]}>Mensual</Text>
-          </TouchableOpacity>
-        </View>
-
         {cargando ? (
-          <View style={styles.contenedorCargaReporte}>
+          <View style={styles.contenedorCarga}>
             <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={styles.textoCargando}>Procesando período...</Text>
+            <Text style={styles.textoCargando}>Procesando métricas...</Text>
           </View>
         ) : (
           <>
-            {/* Sección: Resumen del Negocio */}
-            <Tarjeta tinted={false} style={styles.tarjetaReporte}>
-              <Text style={styles.tituloSeccion}>Resumen del Período</Text>
-              <View style={styles.filaResumen}>
-                <View style={styles.colResumen}>
-                  <Text style={styles.labelResumen}>Sesiones de Caja</Text>
-                  <Text style={styles.valorResumen}>{resumenHistorico.length}</Text>
+            {/* 1. Tarjeta Resumen de Ventas (Monto Gigante) */}
+            <Tarjeta tinted={false} style={styles.tarjetaTotal}>
+              <Text style={styles.labelTotal}>Facturación total del mes</Text>
+              <Text style={styles.montoGigante}>
+                ${totalFacturado.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </Text>
+              
+              <View style={styles.lineaDivisoria} />
+              
+              <View style={styles.filaMetricas}>
+                <View style={styles.itemMetrica}>
+                  <Text style={styles.labelMetrica}>Operaciones</Text>
+                  <Text style={styles.valorMetrica}>{operacionesCount}</Text>
                 </View>
-                <View style={[styles.colResumen, styles.bordeIzquierdo]}>
-                  <Text style={styles.labelResumen}>Ventas Acumuladas</Text>
-                  <Text style={[styles.valorResumen, { color: theme.colors.primary }]}>
-                    ${totalMetodos.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                <View style={[styles.itemMetrica, styles.bordeIzquierdo]}>
+                  <Text style={styles.labelMetrica}>Ticket Promedio</Text>
+                  <Text style={styles.valorMetrica}>
+                    ${ticketPromedio.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                   </Text>
                 </View>
               </View>
             </Tarjeta>
 
-            {/* Sección: Evolución de Cajas (Gráfico de Barras) */}
+            {/* 2. Tarjeta Métodos de Pago ("Salidas por categoría" de MP) - Ubicado antes que Tendencias */}
             <Tarjeta tinted={false} style={styles.tarjetaReporte}>
-              <Text style={styles.tituloSeccion}>Evolución de Ingresos</Text>
-              <Text style={styles.subtituloSeccion}>Total facturado por jornada cerrada</Text>
-              
-              {resumenHistorico.length === 0 ? (
-                <Text style={styles.textoVacio}>
-                  No hay datos históricos suficientes. Completá cierres de caja para visualizar la evolución del negocio.
-                </Text>
-              ) : (
-                <View style={styles.contenedorGrafico}>
-                  <BarChart
-                    data={barData}
-                    width={screenWidth - 48}
-                    height={180}
-                    noOfSections={4}
-                    barWidth={barWidth}
-                    spacing={spacing}
-                    initialSpacing={12}
-                    xAxisColor={theme.colors.border}
-                    yAxisColor={theme.colors.border}
-                    yAxisTextStyle={styles.textoEjes}
-                    xAxisLabelTextStyle={styles.textoEjes}
-                    isAnimated
-                    hideRules
-                  />
-                </View>
-              )}
-            </Tarjeta>
+              <Text style={styles.tituloSeccion}>Ingresos por Método de Pago</Text>
+              <Text style={styles.subtituloSeccion}>Distribución según el medio de cobro seleccionado</Text>
 
-            {/* Sección: Distribución de Ventas (Gráfico de Torta) */}
-            <Tarjeta tinted={false} style={styles.tarjetaReporte}>
-              <Text style={styles.tituloSeccion}>Métodos de Pago Utilizados</Text>
-              <Text style={styles.subtituloSeccion}>Distribución histórica según el volumen monetario</Text>
-
-              {totalMetodos === 0 ? (
+              {totalFacturado === 0 ? (
                 <Text style={styles.textoVacio}>
-                  Sin registros de ventas facturadas hasta el momento.
+                  Sin ventas registradas en este mes comercial.
                 </Text>
               ) : (
                 <View style={styles.filaGraficoTorta}>
@@ -253,41 +264,101 @@ export default function Reportes() {
                       data={pieData}
                       donut
                       radius={68}
-                      innerRadius={44}
+                      innerRadius={48}
                       innerCircleColor="#FFFFFF"
                       centerLabelComponent={() => (
                         <View style={{ justifyContent: 'center', alignItems: 'center' }}>
                           <Text style={styles.textoCentroTorta}>Total</Text>
                           <Text style={styles.montoCentroTorta}>
-                            ${Math.round(totalMetodos) >= 100000 
-                              ? `${Math.round(totalMetodos / 1000)}k` 
-                              : Math.round(totalMetodos)}
+                            ${totalFacturado >= 100000 
+                              ? `${Math.round(totalFacturado / 1000)}k` 
+                              : Math.round(totalFacturado)}
                           </Text>
                         </View>
                       )}
                     />
                   </View>
 
-                  {/* Leyenda Personalizada */}
-                  <View style={styles.contenedorLeyenda}>
+                  {/* Leyenda en formato filas (un método por fila) */}
+                  <View style={styles.contenedorLeyendaFilas}>
                     {pieData.map((item, idx) => {
-                      const porcentaje = ((item.value / totalMetodos) * 100).toFixed(0);
+                      const porcentaje = ((item.value / totalFacturado) * 100).toFixed(0);
                       return (
-                        <View key={idx} style={styles.itemLeyenda}>
-                          <View style={[styles.indicadorColor, { backgroundColor: item.color }]} />
-                          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                            <MaterialIcons name={obtenerIconoMetodo(item.text)} size={12} color={theme.colors.text.secondary} style={{ marginRight: 6 }} />
-                            <View>
-                              <Text style={styles.textoLeyenda}>{item.text}</Text>
-                              <Text style={styles.porcentajeLeyenda}>
-                                ${item.value.toLocaleString('es-AR', { maximumFractionDigits: 0 })} ({porcentaje}%)
-                              </Text>
-                            </View>
+                        <View 
+                          key={idx} 
+                          style={[
+                            styles.itemLeyendaFila, 
+                            idx === pieData.length - 1 && { borderBottomWidth: 0 }
+                          ]}
+                        >
+                          <View style={styles.infoLeyendaFilaIzq}>
+                            <View style={[styles.indicadorColor, { backgroundColor: item.color }]} />
+                            <MaterialIcons name={obtenerIconoMetodo(item.text)} size={18} color={theme.colors.text.primary} style={{ marginRight: 8 }} />
+                            <Text style={styles.textoLeyenda}>{item.text}</Text>
+                          </View>
+                          <View style={styles.infoLeyendaFilaDer}>
+                            <Text style={styles.montoLeyenda}>${item.value.toLocaleString('es-AR')}</Text>
+                            <Text style={styles.porcentajeLeyendaFila}>({porcentaje}%)</Text>
                           </View>
                         </View>
                       );
                     })}
                   </View>
+                </View>
+              )}
+            </Tarjeta>
+
+            {/* 3. Tarjeta Tendencia Mensual (Comparativa) */}
+            <Tarjeta tinted={false} style={styles.tarjetaReporte}>
+              <Text style={styles.tituloSeccion}>Tendencia de Facturación</Text>
+              <Text style={styles.subtituloSeccion}>Comparación histórica de los últimos meses</Text>
+              
+              <View style={styles.contenedorGraficoTendencia}>
+                <BarChart
+                  data={barDataTendencia}
+                  width={screenWidth - 32}
+                  height={110}
+                  noOfSections={3}
+                  barWidth={22}
+                  spacing={20}
+                  initialSpacing={12}
+                  xAxisColor={theme.colors.border}
+                  yAxisColor="transparent"
+                  yAxisTextStyle={styles.textoEjes}
+                  xAxisLabelTextStyle={styles.textoEjes}
+                  isAnimated
+                  hideRules
+                />
+              </View>
+            </Tarjeta>
+
+            {/* 4. Tarjeta Historial Diario (Eje Y Fijo con Scroll Interno mediante el prop nativo de BarChart) */}
+            <Tarjeta tinted={false} style={styles.tarjetaReporte}>
+              <Text style={styles.tituloSeccion}>Historial Diario de Ventas</Text>
+              <Text style={styles.subtituloSeccion}>Facturación día por día del mes seleccionado</Text>
+
+              {totalFacturado === 0 ? (
+                <Text style={styles.textoVacio}>
+                  Sin registros diarios para este mes.
+                </Text>
+              ) : (
+                <View style={styles.contenedorGraficoDiarioOuter}>
+                  {/* Se remueve scrollable={true} ya que en Gifted Charts el scroll es automático si el contenido supera el 'width' provisto */}
+                  <BarChart
+                    data={barDataDiario}
+                    width={screenWidth - 24}
+                    height={180}
+                    noOfSections={4}
+                    barWidth={12}
+                    spacing={14}
+                    initialSpacing={10}
+                    xAxisColor={theme.colors.border}
+                    yAxisColor="transparent"
+                    yAxisTextStyle={styles.textoEjes}
+                    xAxisLabelTextStyle={styles.textoEjes}
+                    isAnimated
+                    hideRules
+                  />
                 </View>
               )}
             </Tarjeta>
@@ -307,10 +378,18 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: '#FFFFFF',
     height: 56,
-    justifyContent: 'center',
-    paddingHorizontal: theme.spacing.lg,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.sm,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
+  },
+  botonHeader: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tituloHeader: {
     fontFamily: theme.fonts.bold,
@@ -321,35 +400,8 @@ const styles = StyleSheet.create({
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
-  contenedorPeriodos: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: theme.borderRadius.sm,
-    padding: 4,
-    marginBottom: theme.spacing.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  botonPeriodo: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: theme.borderRadius.sm - 2,
-  },
-  botonPeriodoActivo: {
-    backgroundColor: theme.colors.surface,
-  },
-  textoPeriodo: {
-    fontFamily: theme.fonts.medium,
-    fontSize: 11,
-    color: theme.colors.text.secondary,
-  },
-  textoPeriodoActivo: {
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.primary,
-  },
-  contenedorCargaReporte: {
-    height: 300,
+  contenedorCarga: {
+    height: 400,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -359,6 +411,54 @@ const styles = StyleSheet.create({
     fontSize: theme.sizes.sm,
     color: theme.colors.text.secondary,
   },
+  tarjetaTotal: {
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    alignItems: 'center',
+  },
+  labelTotal: {
+    fontFamily: theme.fonts.medium,
+    fontSize: theme.sizes.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: 4,
+  },
+  montoGigante: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: theme.sizes.giant + 6,
+    color: theme.colors.text.primary,
+    fontWeight: 'bold',
+  },
+  lineaDivisoria: {
+    width: '100%',
+    height: 1,
+    backgroundColor: theme.colors.border,
+    marginVertical: theme.spacing.md,
+  },
+  filaMetricas: {
+    flexDirection: 'row',
+    width: '100%',
+  },
+  itemMetrica: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  bordeIzquierdo: {
+    borderLeftWidth: 1,
+    borderLeftColor: theme.colors.border,
+  },
+  labelMetrica: {
+    fontFamily: theme.fonts.medium,
+    fontSize: theme.sizes.xs,
+    color: theme.colors.text.secondary,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  valorMetrica: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: theme.sizes.lg,
+    color: theme.colors.primary,
+  },
   tarjetaReporte: {
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
@@ -367,56 +467,23 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: theme.sizes.md,
     color: theme.colors.text.primary,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subtituloSeccion: {
     fontFamily: theme.fonts.regular,
     fontSize: theme.sizes.xs,
     color: theme.colors.text.secondary,
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
-  filaResumen: {
-    flexDirection: 'row',
-    marginTop: theme.spacing.xs,
-  },
-  colResumen: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xs,
-  },
-  bordeIzquierdo: {
-    borderLeftWidth: 1,
-    borderLeftColor: theme.colors.border,
-  },
-  labelResumen: {
-    fontFamily: theme.fonts.bold,
-    fontSize: theme.sizes.xs,
-    color: theme.colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: theme.spacing.xs,
-  },
-  valorResumen: {
-    fontFamily: theme.fonts.monoBold,
-    fontSize: theme.sizes.xxl,
-    color: theme.colors.text.primary,
-  },
-  contenedorGrafico: {
+  contenedorGraficoTendencia: {
     alignItems: 'center',
     marginTop: theme.spacing.sm,
-    paddingRight: theme.spacing.sm,
+    paddingRight: theme.spacing.md,
   },
   textoEjes: {
     fontFamily: theme.fonts.monoRegular,
     fontSize: 9,
     color: theme.colors.text.secondary,
-  },
-  etiquetaBarra: {
-    fontFamily: theme.fonts.monoBold,
-    fontSize: 8,
-    color: theme.colors.text.secondary,
-    marginBottom: 2,
-    textAlign: 'center',
   },
   textoVacio: {
     fontFamily: theme.fonts.regular,
@@ -424,18 +491,16 @@ const styles = StyleSheet.create({
     color: theme.colors.text.secondary,
     textAlign: 'center',
     marginVertical: theme.spacing.lg,
-    lineHeight: 18,
-    paddingHorizontal: theme.spacing.md,
   },
   filaGraficoTorta: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
     marginTop: theme.spacing.sm,
   },
   contenedorTorta: {
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: theme.spacing.md,
   },
   textoCentroTorta: {
     fontFamily: theme.fonts.regular,
@@ -444,49 +509,52 @@ const styles = StyleSheet.create({
   },
   montoCentroTorta: {
     fontFamily: theme.fonts.monoBold,
-    fontSize: 14,
+    fontSize: 13,
     color: theme.colors.text.primary,
   },
-  contenedorLeyenda: {
-    flex: 1,
-    marginLeft: theme.spacing.md,
-    justifyContent: 'center',
+  contenedorLeyendaFilas: {
+    width: '100%',
+    marginTop: theme.spacing.md,
   },
-  itemLeyenda: {
+  itemLeyendaFila: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  infoLeyendaFilaIzq: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoLeyendaFilaDer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   indicadorColor: {
-    width: 12,
-    height: 12,
-    borderRadius: 3,
-    marginRight: theme.spacing.xs,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginRight: theme.spacing.sm,
   },
   textoLeyenda: {
     fontFamily: theme.fonts.bold,
     fontSize: theme.sizes.xs,
     color: theme.colors.text.primary,
   },
-  porcentajeLeyenda: {
-    fontFamily: theme.fonts.monoRegular,
-    fontSize: 10,
+  montoLeyenda: {
+    fontFamily: theme.fonts.monoBold,
+    fontSize: theme.sizes.sm,
+    color: theme.colors.text.primary,
+    marginRight: 6,
+  },
+  porcentajeLeyendaFila: {
+    fontFamily: theme.fonts.medium,
+    fontSize: theme.sizes.xs,
     color: theme.colors.text.secondary,
   },
-  tarjetaExportacion: {
-    backgroundColor: theme.colors.primary,
-    padding: theme.spacing.md,
-    marginBottom: theme.spacing.md,
-  },
-  descripcionExportacion: {
-    fontFamily: theme.fonts.regular,
-    fontSize: theme.sizes.xs,
-    color: 'rgba(255, 255, 255, 0.8)',
-    lineHeight: 18,
-    marginVertical: theme.spacing.md,
-  },
-  botonExportar: {
-    backgroundColor: theme.colors.secondary,
-    borderWidth: 0,
+  contenedorGraficoDiarioOuter: {
+    marginTop: theme.spacing.sm,
   },
 });

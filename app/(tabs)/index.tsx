@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -14,9 +14,7 @@ import { useCaja } from '@/context/CajaContext';
 import { theme } from '@/theme';
 import { Boton } from '@/components/Boton';
 import { Tarjeta } from '@/components/Tarjeta';
-import { TecladoNumerico, TipoTecla, procesarEntradaTeclado } from '@/components/TecladoNumerico';
 import { ModalConfirmacion } from '@/components/ModalConfirmacion';
-import { obtenerConfiguracion } from '@/db/repositorio';
 import { MaterialIcons } from '@expo/vector-icons';
 
 // Utilidad para formatear la fecha ISO 8601 en formato amigable
@@ -83,7 +81,15 @@ const obtenerColorMetodoVenta = (metodo: string) => {
 
 export default function Inicio() {
   const router = useRouter();
-  const { cajaActiva, ventas, cargando, eliminarVentaActiva } = useCaja();
+  const {
+    cajaActiva,
+    ventas,
+    cargando,
+    eliminarVentaActiva,
+    totalesPorMetodo,
+    totalVendido,
+    efectivoEnCaja,
+  } = useCaja();
   
   // Estado para borrado seguro de ventas
   const [ventaABorrar, setVentaABorrar] = useState<number | null>(null);
@@ -134,35 +140,6 @@ export default function Inicio() {
   }
 
   // --- VISTA 2: DASHBOARD (CAJA ABIERTA) ---
-  const fondoInicial = cajaActiva.fondoInicial;
-  
-  let totalEfectivoVentas = 0;
-  let totalQrVentas = 0;
-  let totalTransferenciaVentas = 0;
-  let totalCreditoVentas = 0;
-
-  ventas.forEach((venta) => {
-    venta.pagos.forEach((pago) => {
-      switch (pago.metodo) {
-        case 'efectivo':
-          totalEfectivoVentas += pago.monto;
-          break;
-        case 'qr':
-          totalQrVentas += pago.monto;
-          break;
-        case 'transferencia':
-          totalTransferenciaVentas += pago.monto;
-          break;
-        case 'credito':
-          totalCreditoVentas += pago.monto;
-          break;
-      }
-    });
-  });
-
-  const totalDigitalVentas = totalQrVentas + totalTransferenciaVentas + totalCreditoVentas;
-  const efectivoEnCaja = fondoInicial + totalEfectivoVentas;
-  const totalGeneralVentas = totalEfectivoVentas + totalDigitalVentas;
 
   return (
     <SafeAreaView style={styles.contenedorPantalla}>
@@ -191,7 +168,7 @@ export default function Inicio() {
             <Tarjeta tinted={false} style={styles.tarjetaContador}>
               <Text style={styles.contadorLabel}>Total Facturado</Text>
               <Text style={styles.contadorValor}>
-                ${totalGeneralVentas.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                ${totalVendido.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </Text>
             </Tarjeta>
           </View>
@@ -206,7 +183,7 @@ export default function Inicio() {
                   <Text style={styles.desgloseLabel}>Efectivo</Text>
                 </View>
                 <Text style={styles.desgloseValor}>
-                  ${totalEfectivoVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                  ${totalesPorMetodo.efectivo.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
                 </Text>
               </Tarjeta>
 
@@ -217,7 +194,7 @@ export default function Inicio() {
                   <Text style={styles.desgloseLabel}>Transf.</Text>
                 </View>
                 <Text style={styles.desgloseValor}>
-                  ${totalTransferenciaVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                  ${totalesPorMetodo.transferencia.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
                 </Text>
               </Tarjeta>
             </View>
@@ -230,7 +207,7 @@ export default function Inicio() {
                   <Text style={styles.desgloseLabel}>QR</Text>
                 </View>
                 <Text style={styles.desgloseValor}>
-                  ${totalQrVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                  ${totalesPorMetodo.qr.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
                 </Text>
               </Tarjeta>
 
@@ -241,7 +218,7 @@ export default function Inicio() {
                   <Text style={styles.desgloseLabel}>Tarjetas</Text>
                 </View>
                 <Text style={styles.desgloseValor}>
-                  ${totalCreditoVentas.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+                  ${totalesPorMetodo.credito.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
                 </Text>
               </Tarjeta>
             </View>
@@ -364,11 +341,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  headerTitulo: {
-    fontFamily: theme.fonts.bold,
-    fontSize: theme.sizes.lg,
-    color: theme.colors.text.primary,
-  },
   headerBrandeado: {
     backgroundColor: theme.colors.primary,
     height: 64,
@@ -383,59 +355,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.medium,
     fontSize: theme.sizes.xs,
     color: theme.colors.secondary,
-  },
-  contenidoApertura: {
-    padding: theme.spacing.md,
-    flexGrow: 1,
-    justifyContent: 'space-between',
-  },
-  tituloApertura: {
-    fontFamily: theme.fonts.bold,
-    fontSize: theme.sizes.lg,
-    color: theme.colors.text.primary,
-    textAlign: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  etiquetaCampo: {
-    fontFamily: theme.fonts.bold,
-    fontSize: theme.sizes.xs,
-    color: theme.colors.text.secondary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-  },
-  contenedorMontoInput: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'center',
-    paddingVertical: theme.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
-    marginBottom: theme.spacing.md,
-  },
-  simboloMoneda: {
-    fontFamily: theme.fonts.bold,
-    fontSize: theme.sizes.xxl,
-    color: theme.colors.primary,
-    marginRight: theme.spacing.xs,
-  },
-  montoTexto: {
-    fontFamily: theme.fonts.monoBold,
-    fontSize: theme.sizes.huge,
-    color: theme.colors.primary,
-  },
-  ayudaTexto: {
-    fontFamily: theme.fonts.regular,
-    fontSize: theme.sizes.xs,
-    color: theme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 18,
-  },
-  teclado: {
-    marginVertical: theme.spacing.md,
-  },
-  seccionTarjeta: {
-    paddingVertical: theme.spacing.md,
   },
   contenidoDashboard: {
     padding: theme.spacing.md,
@@ -502,9 +421,6 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.monoBold,
     fontSize: theme.sizes.md,
     color: theme.colors.text.primary,
-  },
-  seccionAcciones: {
-    marginBottom: theme.spacing.lg,
   },
   seccionHistorial: {
     marginTop: theme.spacing.xxl,

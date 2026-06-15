@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -21,7 +21,16 @@ import { obtenerConfiguracion, guardarConfiguracion } from '@/db/repositorio';
 import { MaterialIcons } from '@expo/vector-icons';
 
 export default function CajaJornada() {
-  const { cajaActiva, ventas, cargando, iniciarNuevaCaja, cerrarCajaActiva } = useCaja();
+  const {
+    cajaActiva,
+    ventas,
+    cargando,
+    iniciarNuevaCaja,
+    cerrarCajaActiva,
+    totalesPorMetodo,
+    totalVendido,
+    efectivoEnCaja,
+  } = useCaja();
   const router = useRouter();
 
   // --- Estados de Apertura ---
@@ -191,37 +200,8 @@ export default function CajaJornada() {
 
   // --- VISTA 2: FORMULARIO DE CIERRE ---
   const fondoInicial = cajaActiva.fondoInicial;
-  
-  let totalEfectivoVentas = 0;
-  let totalQrVentas = 0;
-  let totalTransferenciaVentas = 0;
-  let totalCreditoVentas = 0;
-
-  ventas.forEach((venta) => {
-    venta.pagos.forEach((pago) => {
-      switch (pago.metodo) {
-        case 'efectivo':
-          totalEfectivoVentas += pago.monto;
-          break;
-        case 'qr':
-          totalQrVentas += pago.monto;
-          break;
-        case 'transferencia':
-          totalTransferenciaVentas += pago.monto;
-          break;
-        case 'credito':
-          totalCreditoVentas += pago.monto;
-          break;
-      }
-    });
-  });
-
-  const efectivoEsperado = fondoInicial + totalEfectivoVentas;
-  const totalDigital = totalQrVentas + totalTransferenciaVentas + totalCreditoVentas;
-  const totalGeneralVentas = totalEfectivoVentas + totalDigital;
-
   const contadoFisico = parseFloat(montoContado.replace(',', '.')) || 0;
-  const diferencia = contadoFisico - efectivoEsperado;
+  const diferencia = contadoFisico - efectivoEnCaja;
 
   const obtenerEstadoDiferencia = () => {
     const absDiferencia = Math.abs(diferencia);
@@ -277,14 +257,14 @@ export default function CajaJornada() {
           <View style={styles.filaFinanciera}>
             <Text style={styles.labelFinanciero}>Ventas Efectivo (+):</Text>
             <Text style={styles.valorFinanciero}>
-              ${totalEfectivoVentas.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${totalesPorMetodo.efectivo.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
           <View style={[styles.filaFinanciera, styles.filaDestacada]}>
             <Text style={styles.labelDestacado}>Efectivo en Caja:</Text>
             <Text style={styles.valorDestacado}>
-              ${efectivoEsperado.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${efectivoEnCaja.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
@@ -295,28 +275,28 @@ export default function CajaJornada() {
           <View style={styles.filaFinanciera}>
             <Text style={styles.labelFinancieroSub}>Pago QR:</Text>
             <Text style={styles.valorFinancieroSub}>
-              ${totalQrVentas.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${totalesPorMetodo.qr.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
           <View style={styles.filaFinanciera}>
             <Text style={styles.labelFinancieroSub}>Transferencias:</Text>
             <Text style={styles.valorFinancieroSub}>
-              ${totalTransferenciaVentas.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${totalesPorMetodo.transferencia.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
           <View style={styles.filaFinanciera}>
             <Text style={styles.labelFinancieroSub}>Crédito:</Text>
             <Text style={styles.valorFinancieroSub}>
-              ${totalCreditoVentas.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${totalesPorMetodo.credito.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
 
           <View style={[styles.filaFinanciera, styles.filaDestacada]}>
             <Text style={styles.labelDestacado}>Total Ventas:</Text>
             <Text style={styles.valorDestacado}>
-              ${totalGeneralVentas.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+              ${totalVendido.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
             </Text>
           </View>
         </Tarjeta>
@@ -531,9 +511,6 @@ const styles = StyleSheet.create({
     fontSize: theme.sizes.xs,
     color: theme.colors.text.secondary,
     textAlign: 'center',
-  },
-  contenedorAcciones: {
-    marginTop: theme.spacing.sm,
   },
   contenedorCheckbox: {
     flexDirection: 'row',

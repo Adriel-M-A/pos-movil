@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { TecladoNumerico, TipoTecla } from './TecladoNumerico';
 import { Boton } from './Boton';
@@ -27,7 +27,7 @@ interface TecladoAccionProps {
   styleTeclado?: StyleProp<ViewStyle>;
 }
 
-export function TecladoAccion({
+export const TecladoAccion = memo(function TecladoAccion({
   onPresionarTecla,
   onLimpiarTodo,
   comaActiva = false,
@@ -57,7 +57,7 @@ export function TecladoAccion({
       />
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   contenedor: {

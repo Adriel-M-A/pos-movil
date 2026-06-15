@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import {
   View,
   Text,
@@ -23,20 +23,20 @@ interface TecladoNumericoProps {
   comaActiva?: boolean;
 }
 
-export function TecladoNumerico({
+const TECLAS_KEYBOARD: TipoTecla[][] = [
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+  [',', '0', 'backspace'],
+];
+
+export const TecladoNumerico = memo(function TecladoNumerico({
   onPresionarTecla,
   onLimpiarTodo,
   style,
   comaActiva = false,
 }: TecladoNumericoProps) {
   
-  const teclas: TipoTecla[][] = [
-    ['1', '2', '3'],
-    ['4', '5', '6'],
-    ['7', '8', '9'],
-    [',', '0', 'backspace'],
-  ];
-
   const renderTecla = (tecla: TipoTecla) => {
     const esBackspace = tecla === 'backspace';
     const esComa = tecla === ',';
@@ -73,14 +73,14 @@ export function TecladoNumerico({
 
   return (
     <View style={[styles.contenedor, style]}>
-      {teclas.map((fila, index) => (
+      {TECLAS_KEYBOARD.map((fila, index) => (
         <View key={index} style={styles.fila}>
           {fila.map(renderTecla)}
         </View>
       ))}
     </View>
   );
-}
+});
 
 /**
  * Función de utilidad recomendada para manejar la entrada de texto del teclado.

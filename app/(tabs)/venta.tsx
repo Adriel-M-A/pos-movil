@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCaja } from '@/context/CajaContext';
 import { theme } from '@/theme';
-import { Boton } from '@/components/Boton';
 import { TipoTecla, procesarEntradaTeclado } from '@/components/TecladoNumerico';
 import { TecladoAccion } from '@/components/TecladoAccion';
 import { ChipMetodoPago } from '@/components/ChipMetodoPago';
@@ -39,14 +38,18 @@ export default function Venta() {
   const [guardando, setGuardando] = useState(false);
 
   // Derivamos el total al vuelo
-  const totalCalculado = pagos.reduce((sum, p) => sum + (parseFloat(p.montoStr.replace(',', '.')) || 0), 0);
+  const totalCalculado = useMemo(() => {
+    return pagos.reduce((sum, p) => sum + (parseFloat(p.montoStr.replace(',', '.')) || 0), 0);
+  }, [pagos]);
 
   // Derivar si la coma está activa para el método seleccionado
-  const pagoActivo = pagos.find((p) => p.metodo === metodoActivo);
-  const comaActiva = pagoActivo ? pagoActivo.montoStr.includes(',') : false;
+  const comaActiva = useMemo(() => {
+    const pagoActivo = pagos.find((p) => p.metodo === metodoActivo);
+    return pagoActivo ? pagoActivo.montoStr.includes(',') : false;
+  }, [pagos, metodoActivo]);
 
   // Procesar toques del teclado
-  const handleTecla = (tecla: TipoTecla) => {
+  const handleTecla = useCallback((tecla: TipoTecla) => {
     setPagos((prev) =>
       prev.map((p) => {
         if (p.metodo === metodoActivo) {
@@ -55,16 +58,16 @@ export default function Venta() {
         return p;
       })
     );
-  };
+  }, [metodoActivo]);
 
-  const handleLimpiarTodo = () => {
+  const handleLimpiarTodo = useCallback(() => {
     setPagos((prev) =>
       prev.map((p) => ({ ...p, montoStr: '' }))
     );
-  };
+  }, []);
 
   // Acción principal: cobrar
-  const handleCobrar = async () => {
+  const handleCobrar = useCallback(async () => {
     if (totalCalculado <= 0) return;
     setGuardando(true);
     try {
@@ -93,7 +96,7 @@ export default function Venta() {
     } finally {
       setGuardando(false);
     }
-  };
+  }, [totalCalculado, pagos, guardarNuevaVenta, handleLimpiarTodo]);
 
   // --- CONTROL DE SEGURIDAD: CAJA CERRADA ---
   if (!cajaActiva) {

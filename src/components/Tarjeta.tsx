@@ -1,4 +1,4 @@
-import React from 'react';
+import { ReactNode } from 'react';
 import {
   View,
   TouchableOpacity,
@@ -10,7 +10,7 @@ import { theme } from '@/theme';
 
 interface TarjetaProps {
   /** Contenido interno de la tarjeta */
-  children: React.ReactNode;
+  children: ReactNode;
   /** Estilos adicionales para la tarjeta */
   style?: StyleProp<ViewStyle>;
   /** Si es true, usa un fondo gris tenue (surface) en lugar de blanco */

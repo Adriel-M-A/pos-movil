@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useMemo, ReactNode } from 'react';
 import { Caja, VentaConPagos } from '@/types';
 import {
   obtenerCajaAbierta,
@@ -28,14 +28,57 @@ interface CajaContextType {
   guardarNuevaVenta: (monto: number, pagos: Array<{ metodo: 'efectivo' | 'transferencia' | 'qr' | 'credito'; monto: number }>) => Promise<void>;
   /** Elimina una venta de la base de datos y actualiza el estado */
   eliminarVentaActiva: (ventaId: number) => Promise<void>;
+  /** Totales de ventas acumulados por método de pago */
+  totalesPorMetodo: {
+    efectivo: number;
+    qr: number;
+    transferencia: number;
+    credito: number;
+  };
+  /** Total de ventas digitales (qr + transferencia + credito) */
+  totalDigital: number;
+  /** Total de todas las ventas cobradas (efectivo + digital) */
+  totalVendido: number;
+  /** Efectivo total esperado en caja (fondoInicial + ventas en efectivo) */
+  efectivoEnCaja: number;
 }
 
 const CajaContext = createContext<CajaContextType | undefined>(undefined);
 
-export function CajaProvider({ children }: { children: React.ReactNode }) {
+export function CajaProvider({ children }: { children: ReactNode }) {
   const [cajaActiva, setCajaActiva] = useState<Caja | null>(null);
   const [ventas, setVentas] = useState<VentaConPagos[]>([]);
   const [cargando, setCargando] = useState<boolean>(true);
+
+  // Calcular estadísticas acumuladas de ventas para el turno actual
+  const { totalesPorMetodo, totalDigital, totalVendido, efectivoEnCaja } = useMemo(() => {
+    const totales = {
+      efectivo: 0,
+      qr: 0,
+      transferencia: 0,
+      credito: 0,
+    };
+
+    ventas.forEach((venta) => {
+      venta.pagos.forEach((pago) => {
+        if (pago.metodo in totales) {
+          totales[pago.metodo as keyof typeof totales] += pago.monto;
+        }
+      });
+    });
+
+    const digital = totales.qr + totales.transferencia + totales.credito;
+    const vendido = totales.efectivo + digital;
+    const fondo = cajaActiva ? cajaActiva.fondoInicial : 0;
+    const efectivoEsperado = fondo + totales.efectivo;
+
+    return {
+      totalesPorMetodo: totales,
+      totalDigital: digital,
+      totalVendido: vendido,
+      efectivoEnCaja: efectivoEsperado,
+    };
+  }, [ventas, cajaActiva]);
 
   // Consulta a la DB el estado actual de la caja
   const cargarEstadoActivo = async () => {
@@ -169,6 +212,10 @@ export function CajaProvider({ children }: { children: React.ReactNode }) {
         refrescarDatos,
         guardarNuevaVenta,
         eliminarVentaActiva,
+        totalesPorMetodo,
+        totalDigital,
+        totalVendido,
+        efectivoEnCaja,
       }}
     >
       {children}
