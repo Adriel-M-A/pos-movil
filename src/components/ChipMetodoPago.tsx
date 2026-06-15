@@ -41,15 +41,7 @@ export const ChipMetodoPago = memo(function ChipMetodoPago({
 
   // Obtener color característico según el método de pago
   const getColorMetodo = (): string => {
-    switch (metodo) {
-      case 'efectivo':
-        return theme.colors.efectivo;
-      case 'transferencia':
-      case 'qr':
-        return theme.colors.digital;
-      case 'credito':
-        return '#673AB7'; // Color violeta sutil para tarjetas de crédito
-    }
+    return theme.colors.secondary;
   };
 
   const colorMetodo = getColorMetodo();

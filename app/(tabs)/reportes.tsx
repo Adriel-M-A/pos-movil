@@ -148,7 +148,7 @@ export default function Reportes() {
     },
     {
       value: datosMensuales.pagosPorMetodo.transferencia,
-      color: theme.colors.secondary,
+      color: theme.colors.transferencia,
       text: 'Transf.',
     },
     {
@@ -158,7 +158,7 @@ export default function Reportes() {
     },
     {
       value: datosMensuales.pagosPorMetodo.credito,
-      color: '#8E24AA',
+      color: theme.colors.credito,
       text: 'Crédito',
     },
   ].filter((p) => p.value > 0);
@@ -203,7 +203,7 @@ export default function Reportes() {
 
   return (
     <SafeAreaView style={styles.contenedor}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       
       {/* Cabecera / Selector de Mes estilo Mercado Pago */}
       <View style={styles.header}>
@@ -265,7 +265,7 @@ export default function Reportes() {
                       donut
                       radius={68}
                       innerRadius={48}
-                      innerCircleColor="#FFFFFF"
+                      innerCircleColor={theme.colors.surface}
                       centerLabelComponent={() => (
                         <View style={{ justifyContent: 'center', alignItems: 'center' }}>
                           <Text style={styles.textoCentroTorta}>Total</Text>
@@ -373,10 +373,10 @@ export default function Reportes() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',

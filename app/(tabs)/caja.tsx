@@ -137,7 +137,7 @@ export default function CajaJornada() {
   if (cargando) {
     return (
       <SafeAreaView style={styles.centrado}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </SafeAreaView>
     );
@@ -147,7 +147,7 @@ export default function CajaJornada() {
   if (!cajaActiva) {
     return (
       <SafeAreaView style={styles.contenedorPantalla}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
         
         <View style={styles.header}>
           <Text style={styles.tituloHeader}>Apertura de Caja</Text>
@@ -235,7 +235,7 @@ export default function CajaJornada() {
 
   return (
     <SafeAreaView style={styles.contenedorPantalla}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       
       <View style={styles.header}>
         <Text style={styles.tituloHeader}>Arqueo y Cierre de Caja</Text>
@@ -353,16 +353,16 @@ export default function CajaJornada() {
 const styles = StyleSheet.create({
   contenedorPantalla: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
   },
   centrado: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     height: 56,
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.lg,
@@ -438,7 +438,7 @@ const styles = StyleSheet.create({
     color: theme.colors.text.primary,
   },
   filaDestacada: {
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
     marginHorizontal: -theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.sm,
     padding: theme.spacing.md,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
   },
   textoDiferencia: {
     fontFamily: theme.fonts.bold,

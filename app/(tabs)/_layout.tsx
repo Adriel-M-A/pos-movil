@@ -9,7 +9,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: '#B0BEC5', // Gris claro de alto contraste
+        tabBarInactiveTintColor: theme.colors.text.muted,
         tabBarStyle: styles.tabBar,
         tabBarLabelStyle: styles.label,
       }}
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     height: 68,
     paddingBottom: 10,
     paddingTop: 6,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     overflow: 'visible', // Evita que se recorte el botón central en iOS/Android
   },
   label: {
@@ -116,7 +116,7 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 5,
     borderWidth: 4,
-    borderColor: '#FFFFFF',
+    borderColor: theme.colors.surface,
   },
   botonCobrarCentralActivo: {
     backgroundColor: theme.colors.secondary,

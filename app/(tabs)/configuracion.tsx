@@ -49,7 +49,7 @@ export default function Configuracion() {
 
   return (
     <SafeAreaView style={styles.contenedor}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       
       {/* Cabecera sutil */}
       <View style={styles.header}>
@@ -81,10 +81,10 @@ export default function Configuracion() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     height: 56,
     justifyContent: 'center',
     paddingHorizontal: theme.spacing.lg,

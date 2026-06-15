@@ -102,7 +102,7 @@ export default function Venta() {
   if (!cajaActiva) {
     return (
       <SafeAreaView style={styles.contenedorCentrado}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
         <MaterialIcons name="lock" size={50} color={theme.colors.text.secondary} style={styles.iconoBloqueado} />
         <Text style={styles.tituloBloqueado}>Caja Cerrada</Text>
         <Text style={styles.mensajeBloqueado}>
@@ -114,7 +114,7 @@ export default function Venta() {
 
   return (
     <SafeAreaView style={styles.contenedor}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
       
       {/* Cabecera compacta con Total Acumulado (Sin cuerpo de tarjeta) */}
       <View style={styles.header}>
@@ -175,11 +175,11 @@ export default function Venta() {
 const styles = StyleSheet.create({
   contenedor: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
   },
   contenedorCentrado: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     paddingHorizontal: theme.spacing.lg,
     paddingTop: theme.spacing.md,
     paddingBottom: theme.spacing.sm,
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.sm,
   },
   footer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     padding: theme.spacing.md,

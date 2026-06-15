@@ -72,9 +72,9 @@ const obtenerIconoMetodoVenta = (metodo: string) => {
 const obtenerColorMetodoVenta = (metodo: string) => {
   switch (metodo) {
     case 'efectivo': return theme.colors.efectivo;
-    case 'transferencia': return theme.colors.secondary;
+    case 'transferencia': return theme.colors.transferencia;
     case 'qr': return theme.colors.digital;
-    case 'credito': return '#673AB7';
+    case 'credito': return theme.colors.credito;
     default: return theme.colors.text.secondary;
   }
 };
@@ -112,7 +112,7 @@ export default function Inicio() {
   if (cargando) {
     return (
       <SafeAreaView style={styles.centrado}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
         <ActivityIndicator size="large" color={theme.colors.primary} />
       </SafeAreaView>
     );
@@ -122,7 +122,7 @@ export default function Inicio() {
   if (!cajaActiva) {
     return (
       <SafeAreaView style={styles.contenedorCentrado}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <StatusBar barStyle="dark-content" backgroundColor={theme.colors.surface} />
         <MaterialIcons name="lock" size={60} color={theme.colors.text.secondary} style={styles.iconoBloqueado} />
         <Text style={styles.tituloBloqueado}>Caja Cerrada</Text>
         <Text style={styles.mensajeBloqueado}>
@@ -253,7 +253,7 @@ export default function Inicio() {
               const metodosLista = venta.pagos.map(p => nombresMetodosCorta[p.metodo] || p.metodo).join(' / ');
               
               return (
-                <Tarjeta key={venta.id} tinted style={styles.tarjetaVentaItem}>
+                <Tarjeta key={venta.id} tinted={false} style={styles.tarjetaVentaItem}>
                   <View style={styles.filaVentaItem}>
                     {/* Columna 1: Hora */}
                     <View style={styles.colVentaHora}>
@@ -323,16 +323,16 @@ export default function Inicio() {
 const styles = StyleSheet.create({
   contenedorPantalla: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
   },
   centrado: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
   },
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.surface,
     height: 56,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
   headerSubtituloBrandeado: {
     fontFamily: theme.fonts.medium,
     fontSize: theme.sizes.xs,
-    color: theme.colors.secondary,
+    color: theme.colors.text.muted,
   },
   contenidoDashboard: {
     padding: theme.spacing.md,
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 12,
-    backgroundColor: '#F0F3F3',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
   contenedorCentrado: {
     flex: 1,
-    backgroundColor: '#ECEFF1',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: theme.spacing.xl,

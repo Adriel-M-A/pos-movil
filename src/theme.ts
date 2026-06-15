@@ -6,26 +6,28 @@
 export const theme = {
   colors: {
     // Marca e Identidad
-    primary: '#004D40',      // Deep Emerald (Marca y textos principales)
-    secondary: '#00BFA5',    // Teal Vibrante (Acciones primarias / CTAs)
+    primary: '#0D3A35',      // Deep Bluish (Marca y textos principales)
+    secondary: '#276152',    // Moderate Green (Acciones primarias / CTAs)
     
     // Estados / Métodos de Pago
     efectivo: '#2E7D32',     // Verde oscuro (Efectivo / Éxito)
-    digital: '#0288D1',      // Azul (QR / Transferencia)
+    transferencia: '#00ACC1', // Cyan/Teal (Transferencia)
+    digital: '#0288D1',      // Azul (QR)
+    credito: '#8E24AA',      // Púrpura (Crédito)
     danger: '#D32F2F',       // Rojo (Error / Alerta / Eliminar)
     
     // Superficies y Fondos
-    background: '#FFFFFF',   // Fondo principal de la app
-    surface: '#F5F7F7',      // Gris tenue para listas, tarjetas secundarias
-    border: '#E2E8F0',       // Borde sutil para separar elementos (1px)
-    backdrop: 'rgba(0, 0, 0, 0.60)', // Opacidad de 60% para modales
+    background: '#F8F9FA',   // Off-white (Blanco no puro para fondos de pantalla)
+    surface: '#FFFFFF',      // Blanco puro para tarjetas/superficies
+    border: '#B1B7AB',       // Laurel Green (Borde sutil)
+    backdrop: 'rgba(13, 58, 53, 0.60)', // Deep Bluish translúcido para modales
     
     // Textos
     text: {
-      primary: '#1A252C',    // Slate oscuro para textos generales y máxima legibilidad
-      brand: '#004D40',      // Deep Emerald para destacar títulos de marca
-      secondary: '#455A64',  // Gris intermedio para textos secundarios
-      muted: '#90A4AE',      // Gris claro para placeholders
+      primary: '#0D3A35',    // Deep Bluish para máxima legibilidad
+      brand: '#0D3A35',      // Deep Bluish para destacar títulos de marca
+      secondary: '#276152',  // Moderate Green para textos secundarios
+      muted: '#B1B7AB',      // Laurel Green para placeholders e inactivos
       light: '#FFFFFF',      // Blanco para textos sobre fondos oscuros
     },
   },

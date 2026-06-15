@@ -60,10 +60,10 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   plain: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   tinted: {
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.background,
   },
   border: {
     borderWidth: 1,
