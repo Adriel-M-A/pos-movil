@@ -1,4 +1,4 @@
-import { integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { integer, real, sqliteTable, text, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 /**
@@ -20,11 +20,14 @@ export const cajas = sqliteTable('cajas', {
  */
 export const ventas = sqliteTable('ventas', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  cajaId: integer('caja_id').notNull().references(() => cajas.id),
+  cajaId: integer('caja_id').notNull().references(() => cajas.id, { onDelete: 'cascade' }),
   monto: real('monto').notNull(),
   timestamp: text('timestamp').notNull(), // ISO 8601 en hora local, generado por la app
   nota: text('nota'), // campo libre opcional
-});
+}, (table) => ({
+  cajaIdIdx: index('ventas_caja_id_idx').on(table.cajaId),
+  timestampIdx: index('ventas_timestamp_idx').on(table.timestamp),
+}));
 
 /**
  * Métodos de pago de cada venta.
@@ -32,10 +35,12 @@ export const ventas = sqliteTable('ventas', {
  */
 export const ventaPagos = sqliteTable('venta_pagos', {
   id: integer('id').primaryKey({ autoIncrement: true }),
-  ventaId: integer('venta_id').notNull().references(() => ventas.id),
+  ventaId: integer('venta_id').notNull().references(() => ventas.id, { onDelete: 'cascade' }),
   metodo: text('metodo', { enum: ['efectivo', 'transferencia', 'qr', 'credito'] }).notNull(),
   monto: real('monto').notNull(),
-});
+}, (table) => ({
+  ventaIdIdx: index('venta_pagos_venta_id_idx').on(table.ventaId),
+}));
 
 /**
  * Settings generales de la app en formato clave-valor.

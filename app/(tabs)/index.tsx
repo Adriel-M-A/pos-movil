@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   StatusBar,
   TouchableOpacity,
+  FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,41 +17,7 @@ import { Boton } from '@/components/Boton';
 import { Tarjeta } from '@/components/Tarjeta';
 import { ModalConfirmacion } from '@/components/ModalConfirmacion';
 import { MaterialIcons } from '@expo/vector-icons';
-
-// Utilidad para formatear la fecha ISO 8601 en formato amigable
-function formatearFechaApertura(isoString: string): string {
-  if (!isoString) return '';
-  try {
-    const normalizado = isoString.replace(' ', 'T');
-    const [fechaPart, horaPart] = normalizado.split('T');
-    
-    const separador = fechaPart.includes('-') ? '-' : '/';
-    const partesFecha = fechaPart.split(separador);
-    
-    let yyyy = partesFecha[0];
-    let mm = partesFecha[1];
-    let dd = partesFecha[2];
-    
-    if (yyyy.length === 2 && dd.length === 4) {
-      const temp = yyyy;
-      yyyy = dd;
-      dd = temp;
-    }
-    
-    const partesHora = horaPart.split(':');
-    const hh = partesHora[0];
-    const min = partesHora[1];
-    
-    const meses = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    const mesInt = parseInt(mm, 10) - 1;
-    const nombreMes = meses[mesInt] || mm;
-    
-    return `${parseInt(dd, 10)} de ${nombreMes}, ${hh}:${min} hs`;
-  } catch (err) {
-    console.error('Error al formatear fecha de apertura:', err);
-    return isoString;
-  }
-}
+import { formatearFechaApertura } from '@/utils/format';
 
 const nombresMetodosCorta: Record<string, string> = {
   efectivo: 'Efectivo',
@@ -108,6 +75,160 @@ export default function Inicio() {
     }
   };
 
+  // Invertir ventas de manera eficiente y memoizada
+  const ventasInvertidas = useMemo(() => {
+    return ventas.slice().reverse();
+  }, [ventas]);
+
+  // Componente de cabecera superior para la FlatList
+  const renderHeader = () => (
+    <View style={styles.gridContadores}>
+      <View style={styles.filaContadores}>
+        <Tarjeta tinted={false} style={[styles.tarjetaContador, { marginRight: theme.spacing.sm }]}>
+          <Text style={styles.contadorLabel}>Efectivo en Caja</Text>
+          <Text style={styles.contadorValor}>
+            ${efectivoEnCaja.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </Text>
+        </Tarjeta>
+
+        <Tarjeta tinted={false} style={styles.tarjetaContador}>
+          <Text style={styles.contadorLabel}>Total Facturado</Text>
+          <Text style={styles.contadorValor}>
+            ${totalVendido.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+          </Text>
+        </Tarjeta>
+      </View>
+
+      <Text style={styles.tituloDesglose}>Cobros por método de pago</Text>
+      <View style={styles.contenedorGrillaMetodos}>
+        <View style={styles.filaGrillaMetodos}>
+          {/* Efectivo */}
+          <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: theme.spacing.sm }]}>
+            <View style={styles.contenedorTituloDesglose}>
+              <MaterialIcons name="payments" size={14} color={theme.colors.efectivo} style={{ marginRight: 4 }} />
+              <Text style={styles.desgloseLabel}>Efectivo</Text>
+            </View>
+            <Text style={styles.desgloseValor}>
+              ${totalesPorMetodo.efectivo.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+            </Text>
+          </Tarjeta>
+
+          {/* Transferencia */}
+          <Tarjeta tinted style={styles.tarjetaDesglose}>
+            <View style={styles.contenedorTituloDesglose}>
+              <MaterialIcons name="account-balance" size={14} color={theme.colors.digital} style={{ marginRight: 4 }} />
+              <Text style={styles.desgloseLabel}>Transf.</Text>
+            </View>
+            <Text style={styles.desgloseValor}>
+              ${totalesPorMetodo.transferencia.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+            </Text>
+          </Tarjeta>
+        </View>
+
+        <View style={[styles.filaGrillaMetodos, { marginTop: theme.spacing.sm }]}>
+          {/* QR */}
+          <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: theme.spacing.sm }]}>
+            <View style={styles.contenedorTituloDesglose}>
+              <MaterialIcons name="qr-code" size={14} color={theme.colors.digital} style={{ marginRight: 4 }} />
+              <Text style={styles.desgloseLabel}>QR</Text>
+            </View>
+            <Text style={styles.desgloseValor}>
+              ${totalesPorMetodo.qr.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+            </Text>
+          </Tarjeta>
+
+          {/* Crédito */}
+          <Tarjeta tinted style={styles.tarjetaDesglose}>
+            <View style={styles.contenedorTituloDesglose}>
+              <MaterialIcons name="credit-card" size={14} color="#673AB7" style={{ marginRight: 4 }} />
+              <Text style={styles.desgloseLabel}>Tarjetas</Text>
+            </View>
+            <Text style={styles.desgloseValor}>
+              ${totalesPorMetodo.credito.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
+            </Text>
+          </Tarjeta>
+        </View>
+      </View>
+
+      <View style={styles.seccionHistorial}>
+        <View style={styles.contenedorTituloSeccionConBadge}>
+          <Text style={styles.tituloSeccion}>Ventas de la Jornada</Text>
+          <View style={styles.badgeVentas}>
+            <Text style={styles.badgeVentasTexto}>
+              {ventas.length} {ventas.length === 1 ? 'Operación' : 'Operaciones'}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+
+  // Componente de estado vacío
+  const renderEmpty = () => (
+    <Tarjeta tinted style={styles.tarjetaHistorialVacio}>
+      <Text style={styles.tituloHistorialVacio}>Sin ventas cargadas</Text>
+      <Text style={styles.descripcionHistorialVacio}>
+        Las ventas que registres durante esta jornada aparecerán listadas acá en tiempo real.
+      </Text>
+    </Tarjeta>
+  );
+
+  // Renderizador de cada item del historial de ventas
+  const renderVentaItem = ({ item: venta }: { item: typeof ventas[0] }) => {
+    const primerPago = venta.pagos[0];
+    const metodoPrimerPago = primerPago ? primerPago.metodo : 'efectivo';
+    const metodosLista = venta.pagos.map(p => nombresMetodosCorta[p.metodo] || p.metodo).join(' / ');
+
+    return (
+      <Tarjeta tinted={false} style={styles.tarjetaVentaItem}>
+        <View style={styles.filaVentaItem}>
+          {/* Columna 1: Hora */}
+          <View style={styles.colVentaHora}>
+            <Text style={styles.ventaItemHora}>
+              {venta.timestamp.split('T')[1]?.slice(0, 5) || '00:00'}
+            </Text>
+          </View>
+          
+          {/* Columna 2: Icono */}
+          <View style={styles.colVentaIcono}>
+            <View style={styles.contenedorIconoMetodo}>
+              <MaterialIcons 
+                name={obtenerIconoMetodoVenta(metodoPrimerPago)} 
+                size={20} 
+                color={obtenerColorMetodoVenta(metodoPrimerPago)} 
+              />
+            </View>
+          </View>
+          
+          {/* Columna 3: Monto y Medios de Pago */}
+          <View style={styles.colVentaDetalles}>
+            <Text style={styles.ventaItemMontoTabla}>
+              ${venta.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
+            </Text>
+            <Text 
+              style={styles.ventaItemMetodosTabla}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {metodosLista}
+            </Text>
+          </View>
+          
+          {/* Columna 4: Botón de Borrar (Icono X tenue) */}
+          <View style={styles.colVentaAccion}>
+            <TouchableOpacity
+              style={styles.botonBorrarIcono}
+              onPress={() => setVentaABorrar(venta.id)}
+              activeOpacity={0.6}
+            >
+              <MaterialIcons name="close" size={20} color={theme.colors.text.muted} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Tarjeta>
+    );
+  };
+
   // Renderizador de estado de carga
   if (cargando) {
     return (
@@ -144,7 +265,8 @@ export default function Inicio() {
   return (
     <SafeAreaView style={styles.contenedorPantalla}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
-          {/* Header Caja Abierta sin ajustes redundantes */}
+      
+      {/* Header Caja Abierta sin ajustes redundantes */}
       <View style={[styles.header, styles.headerBrandeado]}>
         <Text style={styles.headerTituloBrandeado}>POS Kiosco</Text>
         <Text style={styles.headerSubtituloBrandeado}>
@@ -152,159 +274,15 @@ export default function Inicio() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.contenidoDashboard} showsVerticalScrollIndicator={false}>
-        
-        {/* Panel de Contadores Rediseñado con Desglose */}
-        <View style={styles.gridContadores}>
-          
-          <View style={styles.filaContadores}>
-            <Tarjeta tinted={false} style={[styles.tarjetaContador, { marginRight: theme.spacing.sm }]}>
-              <Text style={styles.contadorLabel}>Efectivo en Caja</Text>
-              <Text style={styles.contadorValor}>
-                ${efectivoEnCaja.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </Text>
-            </Tarjeta>
-
-            <Tarjeta tinted={false} style={styles.tarjetaContador}>
-              <Text style={styles.contadorLabel}>Total Facturado</Text>
-              <Text style={styles.contadorValor}>
-                ${totalVendido.toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </Text>
-            </Tarjeta>
-          </View>
-
-          <Text style={styles.tituloDesglose}>Cobros por método de pago</Text>
-          <View style={styles.contenedorGrillaMetodos}>
-            <View style={styles.filaGrillaMetodos}>
-              {/* Efectivo */}
-              <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: theme.spacing.sm }]}>
-                <View style={styles.contenedorTituloDesglose}>
-                  <MaterialIcons name="payments" size={14} color={theme.colors.efectivo} style={{ marginRight: 4 }} />
-                  <Text style={styles.desgloseLabel}>Efectivo</Text>
-                </View>
-                <Text style={styles.desgloseValor}>
-                  ${totalesPorMetodo.efectivo.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-                </Text>
-              </Tarjeta>
-
-              {/* Transferencia */}
-              <Tarjeta tinted style={styles.tarjetaDesglose}>
-                <View style={styles.contenedorTituloDesglose}>
-                  <MaterialIcons name="account-balance" size={14} color={theme.colors.digital} style={{ marginRight: 4 }} />
-                  <Text style={styles.desgloseLabel}>Transf.</Text>
-                </View>
-                <Text style={styles.desgloseValor}>
-                  ${totalesPorMetodo.transferencia.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-                </Text>
-              </Tarjeta>
-            </View>
-
-            <View style={[styles.filaGrillaMetodos, { marginTop: theme.spacing.sm }]}>
-              {/* QR */}
-              <Tarjeta tinted style={[styles.tarjetaDesglose, { marginRight: theme.spacing.sm }]}>
-                <View style={styles.contenedorTituloDesglose}>
-                  <MaterialIcons name="qr-code" size={14} color={theme.colors.digital} style={{ marginRight: 4 }} />
-                  <Text style={styles.desgloseLabel}>QR</Text>
-                </View>
-                <Text style={styles.desgloseValor}>
-                  ${totalesPorMetodo.qr.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-                </Text>
-              </Tarjeta>
-
-              {/* Crédito */}
-              <Tarjeta tinted style={styles.tarjetaDesglose}>
-                <View style={styles.contenedorTituloDesglose}>
-                  <MaterialIcons name="credit-card" size={14} color="#673AB7" style={{ marginRight: 4 }} />
-                  <Text style={styles.desgloseLabel}>Tarjetas</Text>
-                </View>
-                <Text style={styles.desgloseValor}>
-                  ${totalesPorMetodo.credito.toLocaleString('es-AR', { maximumFractionDigits: 0 })}
-                </Text>
-              </Tarjeta>
-            </View>
-          </View>
-
-        </View>
-
-
-
-        {/* Historial de Ventas */}
-        <View style={styles.seccionHistorial}>
-          <View style={styles.contenedorTituloSeccionConBadge}>
-            <Text style={styles.tituloSeccion}>Ventas de la Jornada</Text>
-            <View style={styles.badgeVentas}>
-              <Text style={styles.badgeVentasTexto}>
-                {ventas.length} {ventas.length === 1 ? 'Operación' : 'Operaciones'}
-              </Text>
-            </View>
-          </View>
-          
-          {ventas.length === 0 ? (
-            <Tarjeta tinted style={styles.tarjetaHistorialVacio}>
-              <Text style={styles.tituloHistorialVacio}>Sin ventas cargadas</Text>
-              <Text style={styles.descripcionHistorialVacio}>
-                Las ventas que registres durante esta jornada aparecerán listadas acá en tiempo real.
-              </Text>
-            </Tarjeta>
-          ) : (
-            ventas.slice().reverse().map((venta) => {
-              const primerPago = venta.pagos[0];
-              const metodoPrimerPago = primerPago ? primerPago.metodo : 'efectivo';
-              const metodosLista = venta.pagos.map(p => nombresMetodosCorta[p.metodo] || p.metodo).join(' / ');
-              
-              return (
-                <Tarjeta key={venta.id} tinted={false} style={styles.tarjetaVentaItem}>
-                  <View style={styles.filaVentaItem}>
-                    {/* Columna 1: Hora */}
-                    <View style={styles.colVentaHora}>
-                      <Text style={styles.ventaItemHora}>
-                        {venta.timestamp.split('T')[1]?.slice(0, 5) || '00:00'}
-                      </Text>
-                    </View>
-                    
-                    {/* Columna 2: Icono */}
-                    <View style={styles.colVentaIcono}>
-                      <View style={styles.contenedorIconoMetodo}>
-                        <MaterialIcons 
-                          name={obtenerIconoMetodoVenta(metodoPrimerPago)} 
-                          size={20} 
-                          color={obtenerColorMetodoVenta(metodoPrimerPago)} 
-                        />
-                      </View>
-                    </View>
-                    
-                    {/* Columna 3: Monto y Medios de Pago */}
-                    <View style={styles.colVentaDetalles}>
-                      <Text style={styles.ventaItemMontoTabla}>
-                        ${venta.monto.toLocaleString('es-AR', { minimumFractionDigits: 2 })}
-                      </Text>
-                      <Text 
-                        style={styles.ventaItemMetodosTabla}
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                      >
-                        {metodosLista}
-                      </Text>
-                    </View>
-                    
-                    {/* Columna 4: Botón de Borrar (Icono X tenue) */}
-                    <View style={styles.colVentaAccion}>
-                      <TouchableOpacity
-                        style={styles.botonBorrarIcono}
-                        onPress={() => setVentaABorrar(venta.id)}
-                        activeOpacity={0.6}
-                      >
-                        <MaterialIcons name="close" size={20} color={theme.colors.text.muted} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </Tarjeta>
-              );
-            })
-          )}
-        </View>
-
-      </ScrollView>
+      <FlatList
+        data={ventasInvertidas}
+        renderItem={renderVentaItem}
+        keyExtractor={(item) => String(item.id)}
+        ListHeaderComponent={renderHeader}
+        ListEmptyComponent={renderEmpty}
+        contentContainerStyle={styles.contenidoDashboard}
+        showsVerticalScrollIndicator={false}
+      />
 
       {/* Modal de Confirmación para Borrado */}
       <ModalConfirmacion

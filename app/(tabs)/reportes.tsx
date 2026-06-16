@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import { Tarjeta } from '@/components/Tarjeta';
 import { BarChart, PieChart } from 'react-native-gifted-charts';
 import { obtenerDatosMensuales, obtenerTendenciaMensual } from '@/db/repositorio';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
 
 interface VentaItem {
   id: number;
@@ -75,23 +76,25 @@ export default function Reportes() {
   
   const [tendenciaMensual, setTendenciaMensual] = useState<Array<{ mes: string; total: number }>>([]);
 
-  useEffect(() => {
-    async function cargarDatos() {
-      setCargando(true);
-      try {
-        const dMes = await obtenerDatosMensuales(anioMes);
-        const tMes = await obtenerTendenciaMensual(anioMes, 6);
-        setDatosMensuales(dMes);
-        setTendenciaMensual(tMes);
-      } catch (err) {
-        console.error('Error al cargar datos del reporte:', err);
-        Alert.alert('Error', 'No se pudieron cargar las estadísticas.');
-      } finally {
-        setCargando(false);
+  useFocusEffect(
+    useCallback(() => {
+      async function cargarDatos() {
+        setCargando(true);
+        try {
+          const dMes = await obtenerDatosMensuales(anioMes);
+          const tMes = await obtenerTendenciaMensual(anioMes, 6);
+          setDatosMensuales(dMes);
+          setTendenciaMensual(tMes);
+        } catch (err) {
+          console.error('Error al cargar datos del reporte:', err);
+          Alert.alert('Error', 'No se pudieron cargar las estadísticas.');
+        } finally {
+          setCargando(false);
+        }
       }
-    }
-    cargarDatos();
-  }, [anioMes]);
+      cargarDatos();
+    }, [anioMes])
+  );
 
   const cambiarMes = (direccion: 'anterior' | 'siguiente') => {
     const [anioStr, mesStr] = anioMes.split('-');
@@ -199,7 +202,9 @@ export default function Reportes() {
     };
   });
 
-  const screenWidth = Dimensions.get('window').width - 32;
+  const { width: screenWidth } = Dimensions.get('window');
+  const cardInnerWidth = screenWidth - 48; // 24px padding de pantalla + 24px padding de tarjeta
+
 
   return (
     <SafeAreaView style={styles.contenedor}>
@@ -316,7 +321,8 @@ export default function Reportes() {
               <View style={styles.contenedorGraficoTendencia}>
                 <BarChart
                   data={barDataTendencia}
-                  width={screenWidth - 32}
+                  width={cardInnerWidth - 50}
+                  yAxisLabelWidth={35}
                   height={110}
                   noOfSections={3}
                   barWidth={22}
@@ -346,7 +352,8 @@ export default function Reportes() {
                   {/* Se remueve scrollable={true} ya que en Gifted Charts el scroll es automático si el contenido supera el 'width' provisto */}
                   <BarChart
                     data={barDataDiario}
-                    width={screenWidth - 24}
+                    width={cardInnerWidth - 50}
+                    yAxisLabelWidth={35}
                     height={180}
                     noOfSections={4}
                     barWidth={12}
@@ -462,6 +469,7 @@ const styles = StyleSheet.create({
   tarjetaReporte: {
     padding: theme.spacing.md,
     marginBottom: theme.spacing.md,
+    overflow: 'hidden',
   },
   tituloSeccion: {
     fontFamily: theme.fonts.bold,
